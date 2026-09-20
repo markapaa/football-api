@@ -1,7 +1,9 @@
 """Τα HTTP endpoints του API."""
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,6 +26,15 @@ app = FastAPI(
 )
 
 
+STATIC_DIR = Path(__file__).parent / "static"
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    """Η ιστοσελίδα (front end): ένα αρχείο HTML που καλεί το ίδιο το API."""
+    return FileResponse(STATIC_DIR / "index.html")
+
+
 @app.get("/health")
 def health():
     """Το χρησιμοποιούν Docker/hosting για να ελέγξουν ότι η εφαρμογή ζει."""
@@ -41,6 +52,12 @@ def get_team(team_id: int, db: Session = Depends(get_db)):
     if team is None:
         raise HTTPException(status_code=404, detail="Team not found")
     return team
+
+
+@app.get("/seasons", response_model=list[str])
+def list_seasons(db: Session = Depends(get_db)):
+    """Οι σεζόν που υπάρχουν στη βάση, από την πιο πρόσφατη."""
+    return crud.list_seasons(db)
 
 
 @app.get("/matches", response_model=list[schemas.MatchOut])

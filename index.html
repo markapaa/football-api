@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bundesliga Table</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f3f6f2; --card: #ffffff; --ink: #10231a; --muted: #5a6b61; --line: #dde6df;
+    --hover: #eef4ef; --accent: #0f7a4d;
+    --pitch-a: #0e5a3a; --pitch-b: #0b4a30;
+    --w: #0f7a4d; --d: #6f8076; --l: #c0392b;
+    --z-cl: #2a78d6; --z-el: #eb6834; --z-ecl: #1baf7a; --z-po: #eda100; --z-rel: #e34948;
+    --split-home: #0f7a4d; --split-draw: #8a9a90; --split-away: #2f5f8a;
+    --shadow: 0 1px 2px rgba(16, 35, 26, 0.06), 0 4px 16px rgba(16, 35, 26, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #0d1512; --card: #15201b; --ink: #edf5f0; --muted: #9db0a5; --line: #263630;
+      --hover: #1c2b24; --accent: #4cc48a;
+      --pitch-a: #0b3f2a; --pitch-b: #093323;
+      --w: #1f9d66; --d: #6f8076; --l: #d1503f;
+      --z-cl: #3987e5; --z-el: #d95926; --z-ecl: #199e70; --z-po: #c98500; --z-rel: #e66767;
+      --split-home: #1f9d66; --split-draw: #6f8076; --split-away: #4c85b8;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.45;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  /* Hero: γήπεδο με ριγέ γρασίδι και κύκλο κέντρου */
+  .hero {
+    position: relative; overflow: hidden; color: #fff;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 64px, rgba(255,255,255,0) 64px 128px),
+      linear-gradient(135deg, var(--pitch-a), var(--pitch-b));
+  }
+  .hero::before {
+    content: ""; position: absolute; right: -90px; top: 50%; width: 340px; height: 340px;
+    transform: translateY(-50%); border: 2px solid rgba(255,255,255,0.14); border-radius: 50%;
+  }
+  .hero::after {
+    content: ""; position: absolute; right: 80px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.14);
+  }
+  .hero-inner { position: relative; z-index: 1; max-width: 1040px; margin: 0 auto; padding: 28px 16px 24px; }
+  .eyebrow { margin: 0; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.8; }
+  h1 { margin: 2px 0 14px; font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1.1; letter-spacing: -0.01em; }
+  .hero-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  .seasons { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seasons button {
+    border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08); color: #fff;
+    padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: 0.9rem;
+  }
+  .seasons button:hover { background: rgba(255,255,255,0.18); }
+  .seasons button[aria-pressed="true"] { background: #fff; color: var(--pitch-a); border-color: #fff; }
+  .hero a { font-size: 0.9rem; opacity: 0.85; }
+  .hero :focus-visible { outline-color: #fff; }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 40px; }
+  #app { transition: opacity 0.2s; }
+  #app.loading { opacity: 0.55; pointer-events: none; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 16px; margin-bottom: 20px; }
+  .card h2 { margin: 0; font-size: 1.05rem; }
+  .card-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.85rem; }
+
+  /* Κάρτες στατιστικών */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 14px 16px; min-width: 0; }
+  .stat .label { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  .stat .value { font-size: 1.35rem; font-weight: 700; line-height: 1.2; display: flex; align-items: center; gap: 10px; }
+  .stat .sub { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .split { display: flex; gap: 2px; height: 10px; margin: 8px 0 6px; }
+  .split span { min-width: 3px; }
+  .split .home { background: var(--split-home); border-radius: 5px 0 0 5px; }
+  .split .draw { background: var(--split-draw); }
+  .split .away { background: var(--split-away); border-radius: 0 5px 5px 0; }
+  .split-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 0.85rem; color: var(--muted); }
+  .split-legend b { color: var(--ink); }
+
+  /* Σήμα ομάδας */
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 28px; height: 28px; border-radius: 50%; color: #fff; font-weight: 700;
+    font-size: 0.62rem; letter-spacing: 0.02em; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.28);
+  }
+  .badge.lg { width: 52px; height: 52px; font-size: 0.95rem; }
+  .badge.sm { width: 22px; height: 22px; font-size: 0.5rem; }
+
+  /* Πίνακας */
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 8px; text-align: right; white-space: nowrap; }
+  thead th { color: var(--muted); font-weight: 600; font-size: 0.78rem; border-bottom: 1px solid var(--line); }
+  tbody td { border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: none; }
+  th.team, td.team { text-align: left; width: 100%; }
+  td.pos { text-align: center; width: 44px; color: var(--muted); border-left: 4px solid var(--zc, transparent); }
+  th.pos { text-align: center; }
+  td.pts { font-weight: 800; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--hover); }
+  tbody tr.selected { background: var(--hover); box-shadow: inset 0 0 0 1px var(--accent); }
+  .tl { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; font-weight: 600; }
+  .tl:hover .name { text-decoration: underline; }
+  .tl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .form { display: inline-flex; gap: 3px; }
+  .pill { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 5px; color: #fff; font-size: 0.68rem; font-weight: 700; }
+  .pill.W { background: var(--w); } .pill.D { background: var(--d); } .pill.L { background: var(--l); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; font-size: 0.82rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .z-cl { --zc: var(--z-cl); } .z-el { --zc: var(--z-el); } .z-ecl { --zc: var(--z-ecl); } .z-po { --zc: var(--z-po); } .z-rel { --zc: var(--z-rel); }
+  .legend .z-cl i, .legend .z-el i, .legend .z-ecl i, .legend .z-po i, .legend .z-rel i { background: var(--zc); }
+  .hint { margin: 10px 0 0; font-size: 0.82rem; color: var(--muted); }
+
+  /* Πάνελ ομάδας */
+  .team-head { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-bottom: 14px; }
+  .team-head h2 { font-size: 1.4rem; }
+  .team-head .grow { flex: 1; min-width: 180px; }
+  .btn { border: 1px solid var(--line); background: var(--card); padding: 6px 12px; border-radius: 8px; font-size: 0.88rem; font-weight: 600; }
+  .btn:hover:not(:disabled) { background: var(--hover); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .mini { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .mini div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .mini .label { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+  .mini .value { font-weight: 700; font-size: 1.05rem; margin: 0; }
+  .mini .sub { margin: 0; font-size: 0.82rem; color: var(--muted); }
+  .chart-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin-bottom: 6px; }
+  .chart-title h3 { margin: 0; font-size: 0.95rem; }
+  .chart-wrap { position: relative; }
+  .chart { display: block; width: 100%; height: auto; touch-action: pan-y; }
+  .chart .band { opacity: 0.16; }
+  .chart .band.z-cl { fill: var(--z-cl); } .chart .band.z-el { fill: var(--z-el); } .chart .band.z-ecl { fill: var(--z-ecl); }
+  .chart .band.z-po { fill: var(--z-po); } .chart .band.z-rel { fill: var(--z-rel); }
+  .chart .grid { stroke: var(--line); stroke-width: 1; }
+  .chart text { fill: var(--muted); font-size: 11px; font-family: inherit; }
+  .chart .line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .chart .end { fill: var(--ink); stroke: var(--card); stroke-width: 2; }
+  .chart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart .dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+  .tip {
+    position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; white-space: nowrap;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 0.85rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .tip b { display: block; font-size: 1rem; }
+  .tip span { color: var(--muted); }
+
+  /* Αγώνες */
+  .stepper { display: flex; align-items: center; gap: 8px; }
+  .stepper select { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  .md-range { margin: 0 0 8px; font-size: 0.85rem; color: var(--muted); }
+  .match { display: grid; grid-template-columns: 96px 1fr 76px 1fr; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .match:last-child { border-bottom: none; }
+  .match .date { color: var(--muted); font-size: 0.85rem; }
+  .match .side { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .match .side.home { justify-content: flex-end; text-align: right; }
+  .match .side .tl { font-weight: 500; min-width: 0; }
+  .match .side .tl .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .match .winner .tl { font-weight: 800; }
+  .score { text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; background: var(--hover); border-radius: 8px; padding: 4px 0; }
+  .tmatch { display: grid; grid-template-columns: 120px 1fr 64px 28px; gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .tmatch:last-child { border-bottom: none; }
+  .tmatch .date { display: flex; flex-direction: column; color: var(--muted); font-size: 0.85rem; line-height: 1.25; }
+  .tmatch .date small { font-size: 0.75rem; }
+  .tmatch .ha { flex: none; color: var(--muted); font-size: 0.72rem; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+  .tmatch .opp { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .tmatch .opp .tl { min-width: 0; }
+  .tmatch .opp .tl .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .status { padding: 12px 0; color: var(--muted); }
+  .status.error { color: var(--l); }
+  footer { max-width: 1040px; margin: 0 auto; padding: 0 16px 32px; color: var(--muted); font-size: 0.82rem; }
+
+  @media (max-width: 720px) {
+    .c-x { display: none; }
+    .hero::before, .hero::after { display: none; }
+  }
+  @media (max-width: 520px) {
+    .c-form { display: none; }
+    .match { grid-template-columns: 1fr 64px 1fr; }
+    .match .date { grid-column: 1 / -1; }
+    .tmatch { grid-template-columns: 92px 1fr 52px 26px; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow" id="eyebrow">Football</p>
+    <h1 id="title">League table</h1>
+    <div class="hero-row">
+      <div class="seasons" id="seasons" role="group" aria-label="Season"></div>
+      <a href="/docs">API docs</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="app">
+    <p class="status" id="status" role="status">Loading...</p>
+    <div class="stats" id="stats" hidden></div>
+
+    <section class="card" id="table-card" hidden aria-labelledby="table-title">
+      <div class="card-head">
+        <h2 id="table-title">League table</h2>
+        <span class="muted small">Tap a team to see its season</span>
+      </div>
+      <div class="scroll">
+        <table>
+          <caption class="sr-only">League table</caption>
+          <thead>
+            <tr>
+              <th class="pos">#</th><th class="team">Team</th><th>P</th>
+              <th class="c-x">W</th><th class="c-x">D</th><th class="c-x">L</th>
+              <th class="c-x">GF</th><th class="c-x">GA</th><th>GD</th><th>Pts</th><th class="c-form">Form</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="card" id="team-panel" hidden aria-live="polite"></section>
+
+    <section class="card" id="matches-card" hidden aria-labelledby="matches-title">
+      <div class="card-head" id="matches-head"></div>
+      <div id="matches"></div>
+    </section>
+  </div>
+</main>
+<footer>Match data: football-data.co.uk &middot; Served by my FastAPI backend</footer>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---- Ρυθμίσεις ------------------------------------------------------
+  // Αν φορτώσεις άλλο πρωτάθλημα, άλλαξε το όνομα εδώ.
+  const LEAGUE_NAME = "Bundesliga";
+  // Συντομογραφίες ομάδων για τα σήματα (αν λείπει η ομάδα, παίρνει τα 3 πρώτα γράμματα).
+  const TEAM_CODES = {
+    "Bayern Munich": "FCB", "Dortmund": "BVB", "Leverkusen": "B04", "RB Leipzig": "RBL",
+    "Ein Frankfurt": "SGE", "Stuttgart": "VFB", "Freiburg": "SCF", "Hoffenheim": "TSG",
+    "M'gladbach": "BMG", "Wolfsburg": "WOB", "Werder Bremen": "SVW", "Augsburg": "FCA",
+    "Mainz": "M05", "Union Berlin": "FCU", "Heidenheim": "HDH", "St Pauli": "STP",
+    "Hamburg": "HSV", "FC Koln": "KOE", "Bochum": "BOC", "Holstein Kiel": "KSV",
+  };
+  // Θέσεις πρωταθλήματος: ισχύουν για πρωτάθλημα με 16+ ομάδες (18 στη Bundesliga).
+  const ZONE_LABELS = {
+    cl: "Champions League", el: "Europa League", ecl: "Conference League",
+    po: "Relegation play-off", rel: "Relegation",
+  };
+
+  // ---- Βοηθητικές -----------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Όλα τα κείμενα από τη βάση μπαίνουν με textContent (ποτέ innerHTML).
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  }
+  function svg(tag, attrs) {
+    const n = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  async function api(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error(`Request failed (${r.status})`);
+    return r.json();
+  }
+  function ordinal(n) {
+    const s = ["th", "st", "nd", "rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+  function hue(name) {
+    let h = 0;
+    for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
+    return h;
+  }
+  function code(name) {
+    return TEAM_CODES[name] || name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+  }
+  function badge(name, size) {
+    const b = el("span", "badge" + (size ? " " + size : ""), code(name));
+    b.style.background = `hsl(${hue(name)} 52% 36%)`;
+    b.setAttribute("aria-hidden", "true");
+    return b;
+  }
+  const fmtDay = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const fmtShort = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+  function zoneFor(pos, n) {
+    if (n < 16) return null;
+    if (pos <= 4) return "cl";
+    if (pos === 5) return "el";
+    if (pos === 6) return "ecl";
+    if (pos >= n - 1) return "rel";
+    if (pos === n - 2) return "po";
+    return null;
+  }
+
+  // ---- Επεξεργασία δεδομένων (στον browser) ---------------------------
+  function rank(stats) {
+    return Object.values(stats).sort((a, b) =>
+      b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.team.localeCompare(b.team));
+  }
+  function apply(stats, m) {
+    for (const [team, gf, ga] of [
+      [m.home_team.name, m.home_goals, m.away_goals],
+      [m.away_team.name, m.away_goals, m.home_goals],
+    ]) {
+      const s = (stats[team] ||= { team, pts: 0, gf: 0, ga: 0 });
+      s.gf += gf; s.ga += ga;
+      s.pts += gf > ga ? 3 : gf === ga ? 1 : 0;
+    }
+  }
+
+  // Φτιάχνει από τους αγώνες: αγωνιστική, θέση ανά αγωνιστική, φόρμα, συνολικά στατιστικά.
+  function prepare(standings, matches) {
+    const sorted = matches.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id));
+
+    // Αγωνιστική: πόσο παιχνίδι παίζει η κάθε ομάδα (το μεγαλύτερο από τις δύο ομάδες του αγώνα).
+    const played = {};
+    for (const m of sorted) {
+      const h = m.home_team.name, a = m.away_team.name;
+      played[h] = (played[h] || 0) + 1;
+      played[a] = (played[a] || 0) + 1;
+      m.md = Math.max(played[h], played[a]);
+    }
+    const maxMd = sorted.reduce((x, m) => Math.max(x, m.md), 0);
+
+    // Θέση και βαθμοί μετά από κάθε αγωνιστική.
+    const byMd = Array.from({ length: maxMd }, () => []);
+    for (const m of sorted) byMd[m.md - 1].push(m);
+    const stats = {}, history = {};
+    for (let k = 0; k < maxMd; k++) {
+      byMd[k].forEach((m) => apply(stats, m));
+      rank(stats).forEach((row, i) => { (history[row.team] ||= [])[k] = { pos: i + 1, pts: row.pts }; });
+    }
+    for (const arr of Object.values(history)) {
+      for (let k = 1; k < maxMd; k++) if (!arr[k] && arr[k - 1]) arr[k] = arr[k - 1];
+    }
+
+    // Αποτελέσματα ανά ομάδα (χρονολογικά).
+    const results = {};
+    for (const m of sorted) {
+      const h = m.home_team.name, a = m.away_team.name;
+      const res = (gf, ga) => (gf > ga ? "W" : gf === ga ? "D" : "L");
+      (results[h] ||= []).push({ m, opp: a, home: true, gf: m.home_goals, ga: m.away_goals, res: res(m.home_goals, m.away_goals) });
+      (results[a] ||= []).push({ m, opp: h, home: false, gf: m.away_goals, ga: m.home_goals, res: res(m.away_goals, m.home_goals) });
+    }
+
+    // Στατιστικά σεζόν.
+    let goals = 0, hw = 0, dr = 0, aw = 0, biggest = null;
+    for (const m of sorted) {
+      goals += m.home_goals + m.away_goals;
+      if (m.home_goals > m.away_goals) hw++; else if (m.home_goals < m.away_goals) aw++; else dr++;
+      const diff = Math.abs(m.home_goals - m.away_goals), tot = m.home_goals + m.away_goals;
+      if (!biggest || diff > biggest.diff || (diff === biggest.diff && tot > biggest.tot)) biggest = { m, diff, tot };
+    }
+    const n = standings.length;
+    const complete = n > 1 && standings.every((r) => r.played === 2 * (n - 1));
+    return { standings, matches: sorted, maxMd, history, results, complete,
+             summary: { n: sorted.length, goals, hw, dr, aw, biggest: biggest && biggest.m } };
+  }
+
+  // ---- Κατάσταση εφαρμογής -------------------------------------------
+  const state = { seasons: [], season: null, team: null, md: 1, data: null };
+  const cache = {};
+  let loadToken = 0;
+
+  function readHash() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    return { season: p.get("season"), team: p.get("team") };
+  }
+  function writeHash() {
+    const p = new URLSearchParams();
+    if (state.season) p.set("season", state.season);
+    if (state.team) p.set("team", state.team);
+    history.replaceState(null, "", "#" + p.toString());
+  }
+
+  async function loadMatches(season) {
+    const limit = 200, out = [];
+    for (let offset = 0; ; offset += limit) {
+      const page = await api(`/matches?season=${encodeURIComponent(season)}&limit=${limit}&offset=${offset}`);
+      out.push(...page);
+      if (page.length < limit) break;
+    }
+    return out;
+  }
+
+  async function selectSeason(season) {
+    const token = ++loadToken;
+    state.season = season;
+    renderSeasons();
+    $("app").classList.add("loading");
+    try {
+      if (!cache[season]) {
+        const [standings, matches] = await Promise.all([
+          api(`/standings?season=${encodeURIComponent(season)}`), loadMatches(season)]);
+        if (token !== loadToken) return;
+        cache[season] = prepare(standings, matches);
+      }
+      if (token !== loadToken) return;
+      state.data = cache[season];
+      if (state.team && !state.data.standings.some((r) => r.team === state.team)) state.team = null;
+      state.md = state.data.maxMd;
+      setStatus("");
+      renderAll();
+    } catch (err) {
+      if (token === loadToken) setStatus("Could not load this season: " + err.message, true, () => selectSeason(season));
+    } finally {
+      if (token === loadToken) $("app").classList.remove("loading");
+    }
+  }
+
+  function selectTeam(name, scroll) {
+    state.team = state.team === name ? null : name;
+    renderTable(); renderTeam(); renderMatches();
+    writeHash();
+    if (state.team && scroll) $("team-panel").scrollIntoView({ block: "start" });
+  }
+
+  function setStatus(text, isError, retry) {
+    const s = $("status");
+    s.hidden = !text;
+    s.className = "status" + (isError ? " error" : "");
+    s.replaceChildren(document.createTextNode(text || ""));
+    if (retry) {
+      s.appendChild(document.createTextNode(" "));
+      const b = el("button", "btn", "Try again");
+      b.addEventListener("click", retry);
+      s.appendChild(b);
+    }
+  }
+
+  // ---- Εμφάνιση -------------------------------------------------------
+  function renderSeasons() {
+    const box = $("seasons");
+    box.replaceChildren();
+    for (const s of state.seasons) {
+      const b = el("button", "", s);
+      b.setAttribute("aria-pressed", String(s === state.season));
+      b.addEventListener("click", () => { if (s !== state.season) { selectSeason(s); writeHash(); } });
+      box.appendChild(b);
+    }
+  }
+
+  function renderAll() {
+    $("title").textContent = `${LEAGUE_NAME} ${state.season}`;
+    document.title = `${LEAGUE_NAME} ${state.season}`;
+    renderStats(); renderTable(); renderTeam(); renderMatches();
+    writeHash();
+  }
+
+  function statCard(label, valueNode, sub) {
+    const c = el("div", "stat");
+    c.appendChild(el("p", "label", label));
+    const v = el("div", "value");
+    v.appendChild(valueNode);
+    c.appendChild(v);
+    if (sub) c.appendChild(el("p", "sub", sub));
+    return c;
+  }
+
+  function renderStats() {
+    const d = state.data, sm = d.summary, box = $("stats");
+    box.replaceChildren();
+    box.hidden = !sm.n;
+    if (!sm.n) return;
+    const leader = d.standings[0];
+
+    const lv = document.createDocumentFragment();
+    lv.append(badge(leader.team, "lg"), document.createTextNode(leader.team));
+    box.appendChild(statCard(d.complete ? "Champions" : "Leader", lv,
+      `${leader.points} pts after ${leader.played} matches`));
+
+    box.appendChild(statCard("Goals", document.createTextNode(String(sm.goals)),
+      `${(sm.goals / sm.n).toFixed(2)} per match in ${sm.n} matches`));
+
+    // Νίκες γηπεδούχων / ισοπαλίες / νίκες φιλοξενούμενων
+    const pct = (x) => Math.round((x / sm.n) * 100);
+    const c = statCard("Results", document.createTextNode(""), "");
+    c.querySelector(".value").remove();
+    const bar = el("div", "split");
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", `Home wins ${pct(sm.hw)}%, draws ${pct(sm.dr)}%, away wins ${pct(sm.aw)}%`);
+    [["home", sm.hw], ["draw", sm.dr], ["away", sm.aw]].forEach(([cls, v]) => {
+      const s = el("span", cls); s.style.flex = String(v || 0.001); bar.appendChild(s);
+    });
+    const lg = el("div", "split-legend");
+    [["Home wins", sm.hw], ["Draws", sm.dr], ["Away wins", sm.aw]].forEach(([t, v]) => {
+      const s = el("span", "", t + " ");
+      s.appendChild(el("b", "", pct(v) + "%"));
+      lg.appendChild(s);
+    });
+    c.append(bar, lg);
+    box.appendChild(c);
+
+    if (sm.biggest) {
+      const b = sm.biggest;
+      const t = `${b.home_team.name} ${b.home_goals}–${b.away_goals} ${b.away_team.name}`;
+      const v = el("span", "", t); v.style.fontSize = "1rem";
+      box.appendChild(statCard("Biggest win", v, `Matchday ${b.md} · ${fmtDay(b.date)}`));
+    }
+  }
+
+  function formPills(list, count) {
+    const f = el("span", "form");
+    f.setAttribute("aria-label", "Recent form, oldest to newest");
+    for (const r of (list || []).slice(-count)) f.appendChild(el("span", "pill " + r.res, r.res));
+    return f;
+  }
+
+  function teamButton(name, opts) {
+    const b = el("button", "tl");
+    b.type = "button";
+    b.appendChild(badge(name, opts && opts.size));
+    b.appendChild(el("span", "name", name));
+    if (opts && opts.pressed !== undefined) b.setAttribute("aria-pressed", String(opts.pressed));
+    return b;
+  }
+
+  function renderTable() {
+    const d = state.data, n = d.standings.length;
+    $("table-card").hidden = !n;
+    const body = $("tbody");
+    body.replaceChildren();
+    for (const r of d.standings) {
+      const tr = el("tr");
+      const z = zoneFor(r.position, n);
+      if (r.team === state.team) tr.classList.add("selected");
+      const pos = el("td", "pos" + (z ? " z-" + z : ""), String(r.position));
+      if (z) pos.title = ZONE_LABELS[z];
+      tr.appendChild(pos);
+
+      const td = el("td", "team");
+      const btn = teamButton(r.team, { pressed: r.team === state.team });
+      td.appendChild(btn);
+      tr.appendChild(td);
+
+      const gd = r.goal_difference > 0 ? "+" + r.goal_difference : String(r.goal_difference);
+      [[r.played, ""], [r.won, "c-x"], [r.drawn, "c-x"], [r.lost, "c-x"],
+       [r.goals_for, "c-x"], [r.goals_against, "c-x"], [gd, ""], [r.points, "pts"]]
+        .forEach(([v, cls]) => tr.appendChild(el("td", cls, String(v))));
+      const ft = el("td", "c-form");
+      ft.appendChild(formPills(d.results[r.team], 5));
+      tr.appendChild(ft);
+
+      tr.addEventListener("click", () => selectTeam(r.team, true));
+      body.appendChild(tr);
+    }
+
+    const lg = $("legend");
+    lg.replaceChildren();
+    if (n >= 16) {
+      const seen = new Set(d.standings.map((r) => zoneFor(r.position, n)).filter(Boolean));
+      for (const z of ["cl", "el", "ecl", "po", "rel"]) {
+        if (!seen.has(z)) continue;
+        const s = el("span", "z-" + z);
+        s.append(el("i"), document.createTextNode(ZONE_LABELS[z]));
+        lg.appendChild(s);
+      }
+    }
+  }
+
+  // ---- Πάνελ ομάδας + γράφημα ----------------------------------------
+  function miniStat(label, value, sub) {
+    const d = el("div");
+    d.appendChild(el("p", "label", label));
+    d.appendChild(el("p", "value", value));
+    if (sub) d.appendChild(el("p", "sub", sub));
+    return d;
+  }
+  const record = (list) => {
+    const w = list.filter((r) => r.res === "W").length, dr = list.filter((r) => r.res === "D").length;
+    return { w, d: dr, l: list.length - w - dr, pts: w * 3 + dr };
+  };
+
+  function renderTeam() {
+    const box = $("team-panel");
+    box.replaceChildren();
+    const d = state.data;
+    const row = state.team && d.standings.find((r) => r.team === state.team);
+    box.hidden = !row;
+    if (!row) return;
+    const list = d.results[row.team] || [];
+    const n = d.standings.length;
+
+    const head = el("div", "team-head");
+    head.appendChild(badge(row.team, "lg"));
+    const g = el("div", "grow");
+    g.appendChild(el("h2", "", row.team));
+    g.appendChild(el("span", "muted", `${ordinal(row.position)} · ${row.points} pts · ${row.won}W ${row.drawn}D ${row.lost}L`));
+    head.appendChild(g);
+    const close = el("button", "btn", "Close");
+    close.type = "button";
+    close.addEventListener("click", () => selectTeam(row.team, false));
+    head.appendChild(close);
+    box.appendChild(head);
+
+    const home = record(list.filter((r) => r.home)), away = record(list.filter((r) => !r.home));
+    const mini = el("div", "mini");
+    const formBox = el("div");
+    formBox.appendChild(el("p", "label", "Form (last 5)"));
+    const fp = el("p", "value"); fp.appendChild(formPills(list, 5)); formBox.appendChild(fp);
+    mini.appendChild(formBox);
+    mini.appendChild(miniStat("Home", `${home.w}W ${home.d}D ${home.l}L`, `${home.pts} pts`));
+    mini.appendChild(miniStat("Away", `${away.w}W ${away.d}D ${away.l}L`, `${away.pts} pts`));
+    const pm = row.played || 1;
+    mini.appendChild(miniStat("Goals per match", `${(row.goals_for / pm).toFixed(2)} for`, `${(row.goals_against / pm).toFixed(2)} against`));
+    box.appendChild(mini);
+
+    const hist = d.history[row.team] || [];
+    const known = hist.filter(Boolean);
+    const title = el("div", "chart-title");
+    title.appendChild(el("h3", "", "League position by matchday"));
+    if (known.length) {
+      const best = Math.min(...known.map((h) => h.pos)), worst = Math.max(...known.map((h) => h.pos));
+      title.appendChild(el("span", "muted small",
+        `Started ${ordinal(known[0].pos)} · now ${ordinal(known[known.length - 1].pos)} · best ${ordinal(best)} · worst ${ordinal(worst)}`));
+    }
+    box.appendChild(title);
+    const wrap = el("div", "chart-wrap");
+    box.appendChild(wrap);
+    if (known.length > 1) drawChart(wrap, row.team, n);
+
+    if (n >= 16) {
+      const lg = el("div", "legend");
+      for (const z of ["cl", "el", "ecl", "po", "rel"]) {
+        const s = el("span", "z-" + z);
+        s.append(el("i"), document.createTextNode(ZONE_LABELS[z]));
+        lg.appendChild(s);
+      }
+      box.appendChild(lg);
+    }
+  }
+
+  function drawChart(wrap, team, n) {
+    const d = state.data, hist = d.history[team], maxMd = d.maxMd;
+    const W = 640, H = 240, L = 38, R = 16, T = 14, B = 28;
+    const step = (H - T - B) / Math.max(n - 1, 1);
+    const xOf = (k) => L + (maxMd <= 1 ? 0 : ((k - 1) / (maxMd - 1)) * (W - L - R));
+    const yOf = (p) => T + (p - 1) * step;
+
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, class: "chart", role: "img",
+      "aria-label": `Line chart of ${team} league position after each matchday. Details are listed above the chart.` });
+
+    if (n >= 16) {
+      [["cl", 1, 4], ["el", 5, 5], ["ecl", 6, 6], ["po", n - 2, n - 2], ["rel", n - 1, n]].forEach(([z, a, b]) => {
+        s.appendChild(svg("rect", { x: L, y: (yOf(a) - step / 2).toFixed(1), width: W - L - R,
+          height: ((b - a + 1) * step).toFixed(1), class: "band z-" + z }));
+      });
+    }
+    const yTicks = [...new Set([1, 5, 10, 15, n].filter((p) => p <= n))];
+    for (const p of yTicks) {
+      s.appendChild(svg("line", { x1: L, x2: W - R, y1: yOf(p), y2: yOf(p), class: "grid" }));
+      const t = svg("text", { x: L - 8, y: yOf(p) + 4, "text-anchor": "end" });
+      t.textContent = String(p);
+      s.appendChild(t);
+    }
+    for (let k = 1; k <= maxMd; k++) {
+      if (k === 1 || k % 5 === 0 || k === maxMd) {
+        const t = svg("text", { x: xOf(k), y: H - 8, "text-anchor": "middle" });
+        t.textContent = String(k);
+        s.appendChild(t);
+      }
+    }
+
+    const pts = [];
+    hist.forEach((h, i) => { if (h) pts.push([xOf(i + 1), yOf(h.pos)]); });
+    s.appendChild(svg("path", { class: "line", d: "M" + pts.map((p) => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L") }));
+    const last = pts[pts.length - 1];
+    s.appendChild(svg("circle", { class: "end", cx: last[0], cy: last[1], r: 4 }));
+
+    const cross = svg("line", { class: "cross", y1: T - 4, y2: H - B + 4 });
+    const dot = svg("circle", { class: "dot", r: 5 });
+    cross.style.display = dot.style.display = "none";
+    s.append(cross, dot);
+    wrap.appendChild(s);
+
+    const tip = el("div", "tip");
+    tip.hidden = true;
+    wrap.appendChild(tip);
+
+    let current = maxMd;
+    function show(k) {
+      k = Math.max(1, Math.min(maxMd, k));
+      const h = hist[k - 1];
+      if (!h) return;
+      current = k;
+      const x = xOf(k), y = yOf(h.pos);
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x);
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y);
+      cross.style.display = dot.style.display = "";
+      tip.hidden = false;
+      tip.replaceChildren(el("b", "", `${ordinal(h.pos)} · ${h.pts} pts`), el("span", "", `after matchday ${k}`));
+      tip.style.left = Math.max(12, Math.min(88, (x / W) * 100)) + "%";
+    }
+    function hide() { cross.style.display = dot.style.display = "none"; tip.hidden = true; }
+
+    s.addEventListener("pointermove", (e) => {
+      const r = s.getBoundingClientRect();
+      const px = ((e.clientX - r.left) / r.width) * W;
+      show(Math.round(((px - L) / (W - L - R)) * (maxMd - 1)) + 1);
+    });
+    s.addEventListener("pointerleave", hide);
+    wrap.tabIndex = 0;
+    wrap.setAttribute("role", "group");
+    wrap.setAttribute("aria-label", "Use the left and right arrow keys to move between matchdays");
+    wrap.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") { show(current - 1); e.preventDefault(); }
+      else if (e.key === "ArrowRight") { show(current + 1); e.preventDefault(); }
+      else if (e.key === "Home") { show(1); e.preventDefault(); }
+      else if (e.key === "End") { show(maxMd); e.preventDefault(); }
+    });
+    wrap.addEventListener("blur", hide);
+  }
+
+  // ---- Λίστα αγώνων ---------------------------------------------------
+  function renderMatches() {
+    const d = state.data, head = $("matches-head"), list = $("matches");
+    head.replaceChildren(); list.replaceChildren();
+    $("matches-card").hidden = !d.matches.length;
+    if (!d.matches.length) return;
+
+    if (state.team) {
+      const h = el("h2", "", `${state.team} · all matches`);
+      h.id = "matches-title";
+      const b = el("button", "btn", "Show by matchday");
+      b.type = "button";
+      b.addEventListener("click", () => selectTeam(state.team, false));
+      head.append(h, b);
+      const rows = (d.results[state.team] || []).slice().reverse();
+      for (const r of rows) {
+        const row = el("div", "tmatch");
+        const dc = el("span", "date");
+        dc.append(el("span", "", fmtDay(r.m.date)), el("small", "", `MD ${r.m.md} · ${r.home ? "Home" : "Away"}`));
+        row.appendChild(dc);
+        const opp = el("span", "opp");
+        const ob = teamButton(r.opp, { size: "sm" });
+        ob.addEventListener("click", () => selectTeam(r.opp, true));
+        opp.appendChild(ob);
+        row.appendChild(opp);
+        row.appendChild(el("span", "score", `${r.gf}–${r.ga}`));
+        const pill = el("span", "pill " + r.res, r.res);
+        pill.title = { W: "Win", D: "Draw", L: "Loss" }[r.res];
+        row.appendChild(pill);
+        list.appendChild(row);
+      }
+      return;
+    }
+
+    const h = el("h2", "", "Matches");
+    h.id = "matches-title";
+    const step = el("div", "stepper");
+    const prev = el("button", "btn", "‹ Prev"), next = el("button", "btn", "Next ›");
+    prev.type = next.type = "button";
+    prev.disabled = state.md <= 1; next.disabled = state.md >= d.maxMd;
+    prev.addEventListener("click", () => { state.md--; renderMatches(); });
+    next.addEventListener("click", () => { state.md++; renderMatches(); });
+    const sel = el("select");
+    sel.setAttribute("aria-label", "Matchday");
+    for (let k = d.maxMd; k >= 1; k--) {
+      const o = el("option", "", `Matchday ${k}`); o.value = String(k); sel.appendChild(o);
+    }
+    sel.value = String(state.md);
+    sel.addEventListener("change", () => { state.md = Number(sel.value); renderMatches(); });
+    step.append(prev, sel, next);
+    head.append(h, step);
+
+    const games = d.matches.filter((m) => m.md === state.md);
+    if (games.length) {
+      const dates = games.map((m) => m.date).sort();
+      const a = fmtShort(dates[0]), b = fmtShort(dates[dates.length - 1]);
+      list.appendChild(el("p", "md-range", a === b ? a : `${a} – ${b}`));
+    }
+    for (const m of games) {
+      const row = el("div", "match");
+      row.appendChild(el("span", "date", fmtDay(m.date)));
+      const hs = el("span", "side home" + (m.home_goals > m.away_goals ? " winner" : ""));
+      const hb = teamButton(m.home_team.name, { size: "sm" });
+      hb.classList.add("rev");
+      hb.style.flexDirection = "row-reverse";
+      hb.addEventListener("click", () => selectTeam(m.home_team.name, true));
+      hs.appendChild(hb);
+      row.appendChild(hs);
+      row.appendChild(el("span", "score", `${m.home_goals}–${m.away_goals}`));
+      const as = el("span", "side away" + (m.away_goals > m.home_goals ? " winner" : ""));
+      const ab = teamButton(m.away_team.name, { size: "sm" });
+      ab.addEventListener("click", () => selectTeam(m.away_team.name, true));
+      as.appendChild(ab);
+      row.appendChild(as);
+      list.appendChild(row);
+    }
+  }
+
+  // ---- Εκκίνηση -------------------------------------------------------
+  async function init() {
+    $("eyebrow").textContent = LEAGUE_NAME;
+    try {
+      state.seasons = await api("/seasons");
+    } catch (err) {
+      setStatus("Could not reach the API: " + err.message, true, init);
+      return;
+    }
+    if (!state.seasons.length) {
+      setStatus("No data yet. Load a CSV with: python -m app.importer D1.csv --season 2025-26");
+      return;
+    }
+    const h = readHash();
+    state.team = h.team;
+    const start = state.seasons.includes(h.season) ? h.season : state.seasons[0];
+    selectSeason(start);
+  }
+  init();
+})();
+</script>
+</body>
+</html>

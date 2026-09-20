@@ -32,6 +32,11 @@ def create_match(db: Session, data: schemas.MatchCreate) -> models.Match:
     return match
 
 
+def list_seasons(db: Session) -> list[str]:
+    stmt = select(models.Match.season).distinct().order_by(models.Match.season.desc())
+    return list(db.scalars(stmt))
+
+
 def list_matches(
     db: Session,
     season: str | None = None,

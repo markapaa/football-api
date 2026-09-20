@@ -101,5 +101,18 @@ def test_standings(client):
     assert (c["points"], c["goal_difference"]) == (1, -3)
 
 
+def test_seasons_listed_newest_first(client):
+    add_match(client, "A", "B", 1, 0, season="2023-24")
+    add_match(client, "A", "B", 2, 2, season="2024-25", date="2024-09-01")
+    add_match(client, "B", "A", 0, 1, season="2024-25", date="2024-09-08")
+    assert client.get("/seasons").json() == ["2024-25", "2023-24"]
+
+
+def test_home_page_is_served(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert "text/html" in r.headers["content-type"]
+
+
 def test_standings_requires_season(client):
     assert client.get("/standings").status_code == 422
