@@ -125,5 +125,5 @@ def test_top_attacks(client):
     result = client.get("/stats/top-attacks", params={"season": "2024-25", "limit": 2}).json()
 
     assert len(result) == 2
-    assert result[0]["team"] == "Α"
+    assert result[0]["team"] == "A"
     assert result[0]["goals_for"] == 5
