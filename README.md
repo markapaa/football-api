@@ -82,6 +82,25 @@ docker exec football-api python -m app.importer D1.csv --season 2025-26
 
 Το volume `football-data` κρατά τη βάση ακόμα κι αν το container σβηστεί.
 
+## CI/CD και Kubernetes
+
+Σε κάθε push στο `main`, το GitHub Actions:
+
+1. τρέχει τα tests (pytest),
+2. χτίζει την Docker εικόνα,
+3. την ανεβάζει στο GitHub Container Registry (`ghcr.io/markapaa/football-api`).
+
+Η εικόνα μπορεί να τρέξει σε Kubernetes με τα αρχεία του φακέλου `k8s/`:
+
+```bash
+kubectl apply -f k8s/deployment.yaml
+kubectl port-forward service/football-api 8080:80
+```
+
+Άνοιξε http://127.0.0.1:8080/health. Το Deployment κρατά τα αντίγραφα (pods) ζωντανά και ξαναστήνει αυτόματα όποιο σβήσει.
+
+Σημείωση: κάθε pod έχει τη δική του βάση SQLite. Για πολλά αντίγραφα σε production θα χρειαζόταν κοινή βάση (π.χ. PostgreSQL).
+
 ## Δομή
 
 ```
@@ -94,6 +113,11 @@ app/
   importer.py   εισαγωγή CSV (χωρίς διπλοεγγραφές)
   static/       η ιστοσελίδα (index.html)
 docs/           στιγμιότυπο οθόνης
+tests/          pytest
+sample_data/    δοκιμαστικά δεδομένα
+docs/           στιγμιότυπο οθόνης
+k8s/            αρχεία Kubernetes (Deployment και Service)
+scripts/        check.sh, έλεγχος ότι το API απαντάει
 tests/          pytest
 sample_data/    δοκιμαστικά δεδομένα
 Dockerfile
