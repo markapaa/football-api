@@ -127,3 +127,14 @@ def test_top_attacks(client):
     assert len(result) == 2
     assert result[0]["team"] == "A"
     assert result[0]["goals_for"] == 5
+
+
+def test_duplicate_match_is_rejected(client):
+    first = add_match(client, "A", "B", 2, 0)
+    second = add_match(client, "A", "B", 2, 0)
+
+    assert first.status_code == 201
+    assert second.status_code == 409
+
+    matches = client.get("/matches", params={"season": "2024-25"}).json()
+    assert len(matches) == 1    

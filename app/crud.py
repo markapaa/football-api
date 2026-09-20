@@ -111,3 +111,32 @@ def compute_standings(db: Session, season: str) -> list[schemas.StandingRow]:
         )
         for i, (name, r) in enumerate(ordered, start=1)
     ]
+
+
+def compute_top_attacks(db: Session, season: str, limit: int = 5) -> list[schemas.TeamAttack]:
+    rows = compute_standings(db, season)
+    rows = sorted(rows, key=lambda r: r.goals_for, reverse=True)
+    top = rows[:limit]
+    return [
+        schemas.TeamAttack(
+            team=r.team,
+            goals_for=r.goals_for,
+            goals_per_match=round(r.goals_for / r.played, 2),
+        )
+        for r in top
+    ]
+
+
+def match_exists(db: Session, data: schemas.MatchCreate) -> bool:
+    """Υπάρχει ήδη αγώνας με ίδια σεζόν, ημερομηνία, γηπεδούχο και φιλοξενούμενο;"""
+    stmt = (
+        select(models.Match.id)
+        .where(
+            models.Match.season == data.season,
+            models.Match.date == data.date,
+            models.Match.home_team.has(models.Team.name == data.home_team.strip()),
+            models.Match.away_team.has(models.Team.name == data.away_team.strip()),
+        )
+        .limit(1)
+    )
+    return db.scalar(stmt) is not None

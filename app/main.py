@@ -73,9 +73,20 @@ def list_matches(
 
 @app.post("/matches", response_model=schemas.MatchOut, status_code=201)
 def create_match(data: schemas.MatchCreate, db: Session = Depends(get_db)):
+    if crud.match_exists(db, data):
+        raise HTTPException(status_code=409, detail="Match already exists")
     return crud.create_match(db, data)
 
 
 @app.get("/standings", response_model=list[schemas.StandingRow])
 def standings(season: str = Query(..., examples=["2024-25"]), db: Session = Depends(get_db)):
     return crud.compute_standings(db, season)
+
+
+@app.get("/stats/top-attacks", response_model=list[schemas.TeamAttack])
+def top_attacks(
+    season: str = Query(..., examples=["2024-25"]),
+    limit: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db),
+):
+    return crud.compute_top_attacks(db, season, limit)

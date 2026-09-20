@@ -53,3 +53,8 @@ class StandingRow(BaseModel):
     goals_against: int
     goal_difference: int
     points: int
+
+class TeamAttack(BaseModel):
+    team: str
+    goals_for: int
+    goals_per_match: float
