@@ -3,7 +3,7 @@
 A REST API and small web app for football results, built with FastAPI and loaded with **real Bundesliga data** (seasons 2024-25 and 2025-26, 612 matches). It computes league standings and stats, and ships with a tested, containerised CI/CD pipeline.
 
 **Live demo:** https://football-api-latest-jyfo.onrender.com
-*(hosted on a free plan: the first load can take up to a minute while the app wakes up)*
+*(hosted on a free plan)*
 
 ![Home page](docs/screenshot.png)
 
