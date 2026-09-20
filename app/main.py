@@ -10,13 +10,20 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.database import Base, engine, get_db
 
+from app import crud, importer, models, schemas
+
+
+SEED_FILES = {"D1_2425.csv": "2024-25", "D1.csv": "2025-26"}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Στην εκκίνηση δημιουργεί τους πίνακες αν δεν υπάρχουν.
-    Base.metadata.create_all(engine)
-    yield
 
+    Base.metadata.create_all(engine)
+    for filename, season in SEED_FILES.items():
+        if Path(filename).exists():
+            importer.import_csv(filename, season)
+    yield
 
 app = FastAPI(
     title="Football API",
