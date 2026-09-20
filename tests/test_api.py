@@ -116,3 +116,14 @@ def test_home_page_is_served(client):
 
 def test_standings_requires_season(client):
     assert client.get("/standings").status_code == 422
+
+def test_top_attacks(client):
+    add_match(client, "A", "B", 2, 0)
+    add_match(client, "B", "C", 1, 1)
+    add_match(client, "C", "A", 0, 3)
+
+    result = client.get("/stats/top-attacks", params={"season": "2024-25", "limit": 2}).json()
+
+    assert len(result) == 2
+    assert result[0]["team"] == "Α"
+    assert result[0]["goals_for"] == 5
